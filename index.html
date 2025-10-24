@@ -1,93 +1,64 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>v 1.2.</title>
-<style>
-  html,body {
-    margin:0; height:100%;
-    display:flex; align-items:center; justify-content:center;
-    background:#0f172a; color:#f8fafc;
-    font-family: system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
-  }
-  button {
-    font-size:1.2rem;
-    padding:16px 28px;
-    border:none;
-    border-radius:12px;
-    background:#06b6d4;
-    color:#022c36;
-    box-shadow:0 6px 16px rgba(0,0,0,0.4);
-    touch-action:manipulation;
-  }
-  #status {
-    position:absolute; bottom:20px; left:0; right:0;
-    text-align:center; font-size:0.95rem; color:#94a3b8;
-  }
-</style>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>version 2</title>
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #121212;
+      color: white;
+      font-family: sans-serif;
+    }
+    button {
+      font-size: 1.5rem;
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 1rem;
+      background: #4caf50;
+      color: white;
+    }
+    button.active {
+      background: #f44336;
+    }
+  </style>
 </head>
 <body>
-  <button id="micBtn">Start Microphone</button>
-  <div id="status"></div>
+  <button id="micBtn">🎙️ Start Mic</button>
 
-<script>
-(() => {
-  const btn = document.getElementById('micBtn');
-  const status = document.getElementById('status');
+  <script>
+    let audioCtx;
+    let micStream;
+    let micSource;
+    const micBtn = document.getElementById('micBtn');
 
-  let audioContext = null;
-  let micStream = null;
-  let sourceNode = null;
-
-  function setStatus(msg) { status.textContent = msg; }
-
-  async function startMic() {
-    try {
-      // Create (or resume) AudioContext
-      audioContext = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioContext.state === 'suspended') {
-        await audioContext.resume();
+    micBtn.addEventListener('click', async () => {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
 
-      // Ask for microphone access
-      micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      sourceNode = audioContext.createMediaStreamSource(micStream);
-
-      // Connect microphone directly to system output
-      sourceNode.connect(audioContext.destination);
-
-      btn.textContent = 'Stop Microphone';
-      setStatus('Microphone is streaming to your current output device.');
-    } catch (err) {
-      console.error(err);
-      setStatus('Error accessing microphone: ' + err.message);
-      btn.textContent = 'Start Microphone';
-    }
-  }
-
-  function stopMic() {
-    if (sourceNode) {
-      try { sourceNode.disconnect(); } catch {}
-      sourceNode = null;
-    }
-    if (micStream) {
-      micStream.getTracks().forEach(t => t.stop());
-      micStream = null;
-    }
-    if (audioContext) {
-      audioContext.close();
-      audioContext = null;
-    }
-    btn.textContent = 'Start Microphone';
-    setStatus('Microphone stopped.');
-  }
-
-  btn.addEventListener('click', async () => {
-    if (micStream) stopMic();
-    else await startMic();
-  });
-})();
-</script>
+      if (!micStream) {
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          micSource = audioCtx.createMediaStreamSource(micStream);
+          micSource.connect(audioCtx.destination);
+          micBtn.textContent = "🔇 Stop Mic";
+          micBtn.classList.add('active');
+        } catch (err) {
+          alert("Microphone access denied: " + err.message);
+        }
+      } else {
+        micSource.disconnect();
+        micStream.getTracks().forEach(track => track.stop());
+        micStream = null;
+        micSource = null;
+        micBtn.textContent = "🎙️ Start Mic";
+        micBtn.classList.remove('active');
+      }
+    });
+  </script>
 </body>
 </html>
