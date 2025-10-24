@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Conference Mic</title>
+  <style>
+    body {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: #0e0e0e;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    .mic-indicator {
+      width: 100px;
+      height: 100px;
+      border-radius: 50%;
+      background: gray;
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0);
+      margin-bottom: 30px;
+      transition: all 0.3s ease;
+    }
+
+    .mic-indicator.active {
+      background: #00ff66;
+      box-shadow: 0 0 30px rgba(0, 255, 0, 0.8);
+    }
+
+    button {
+      font-size: 1.3rem;
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 1rem;
+      background: #4caf50;
+      color: white;
+      margin-top: 20px;
+    }
+
+    button.active {
+      background: #f44336;
+    }
+
+    .volume-control {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-top: 20px;
+    }
+
+    input[type="range"] {
+      width: 200px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="mic-indicator" id="micIndicator"></div>
+
+  <button id="micBtn">🎙️ Start Mic</button>
+
+  <div class="volume-control">
+    <label for="volumeSlider">🔊 Volume</label>
+    <input type="range" id="volumeSlider" min="0" max="2" value="1" step="0.1">
+  </div>
+
+  <script>
+    let audioCtx;
+    let micStream;
+    let micSource;
+    let gainNode;
+
+    const micBtn = document.getElementById('micBtn');
+    const micIndicator = document.getElementById('micIndicator');
+    const volumeSlider = document.getElementById('volumeSlider');
+
+    micBtn.addEventListener('click', async () => {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        gainNode = audioCtx.createGain();
+        gainNode.connect(audioCtx.destination);
+      }
+
+      if (!micStream) {
+        try {
+          micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          micSource = audioCtx.createMediaStreamSource(micStream);
+          micSource.connect(gainNode);
+
+          micIndicator.classList.add('active');
+          micBtn.textContent = "🔇 Stop Mic";
+          micBtn.classList.add('active');
+        } catch (err) {
+          alert("Microphone access denied: " + err.message);
+        }
+      } else {
+        micSource.disconnect();
+        gainNode.disconnect();
+        micStream.getTracks().forEach(track => track.stop());
+        micStream = null;
+        micSource = null;
+        micIndicator.classList.remove('active');
+        micBtn.textContent = "🎙️ Start Mic";
+        micBtn.classList.remove('active');
+      }
+    });
+
+    // Volume slider handler
+    volumeSlider.addEventListener('input', (e) => {
+      if (gainNode) {
+        gainNode.gain.value = e.target.value;
+      }
+    });
+  </script>
+</body>
+</html>
