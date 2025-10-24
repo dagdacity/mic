@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Enable Microphone</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --btn: #06b6d4;
+      --btn-text: #04202a;
+      --status: #f8fafc;
+    }
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+      background: linear-gradient(180deg,#071028 0%, #0b1220 100%);
+      color:var(--status);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+    .wrap{
+      width:100%;
+      max-width:460px;
+      padding:24px;
+      box-sizing:border-box;
+      text-align:center;
+    }
+    h1{ font-size:1.1rem; margin:0 0 14px; font-weight:600 }
+    #mic-btn{
+      width:100%;
+      padding:18px;
+      font-size:1.2rem;
+      border-radius:12px;
+      border:0;
+      background:var(--btn);
+      color:var(--btn-text);
+      box-shadow: 0 6px 18px rgba(2,6,23,0.5);
+      touch-action: manipulation;
+    }
+    #mic-btn:disabled { opacity:0.6; }
+    #status {
+      margin-top:14px;
+      font-size:0.95rem;
+      opacity:0.95;
+      color:#dbeafe;
+      min-height:1.2em;
+      word-break:break-word;
+    }
+    #hint { margin-top:8px; font-size:0.8rem; color:#94a3b8 }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Microphone access demo</h1>
+
+    <!-- Single button required by the task -->
+    <button id="mic-btn" type="button">Enable Microphone</button>
+
+    <div id="status" aria-live="polite"></div>
+    <div id="hint">Note: your browser will ask permission. Use HTTPS (or localhost).</div>
+  </div>
+
+  <script>
+    (function () {
+      const btn = document.getElementById('mic-btn');
+      const status = document.getElementById('status');
+
+      // Keep the MediaStream globally so it isn't GC'd and we can stop it later if needed
+      let micStream = null;
+
+      // Helper to update UI
+      function updateStatus(text) {
+        status.textContent = text;
+      }
+
+      // Stop the mic if active (not required by the task but useful)
+      function stopMic() {
+        if (micStream) {
+          micStream.getTracks().forEach(t => t.stop());
+          micStream = null;
+          updateStatus('Microphone stopped.');
+          btn.textContent = 'Enable Microphone';
+          btn.disabled = false;
+        }
+      }
+
+      // Main handler: (single button) requests microphone and toggles state
+      btn.addEventListener('click', async function (ev) {
+        // If mic already enabled, stop it
+        if (micStream) {
+          stopMic();
+          return;
+        }
+
+        // Provide immediate feedback
+        btn.disabled = true;
+        updateStatus('Requesting microphone permission...');
+
+        try {
+          // Request audio only. Browser will show permission prompt.
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+          // success
+          micStream = stream;
+
+          // Optional: you could connect the stream to an <audio> element,
+          // or analyse audio via WebAudio API. We'll just keep it active.
+          btn.textContent = 'Stop Microphone';
+          updateStatus('Microphone enabled — permission granted. Microphone is active.');
+          btn.disabled = false;
+
+          // Example: detect if all tracks end (user revoked permission externally)
+          stream.getTracks().forEach(track => {
+            track.addEventListener('ended', () => {
+              // When user revokes via browser UI or device, track ends
+              micStream = null;
+              btn.textContent = 'Enable Microphone';
+              updateStatus('Microphone stopped (track ended).');
+            });
+          });
+
+        } catch (err) {
+          // Permission denied, or no device, or other error
+          console.error('getUserMedia error:', err);
+          updateStatus('Could not enable microphone: ' + (err.message || err.name));
+          btn.disabled = false;
+          btn.textContent = 'Enable Microphone';
+        }
+      });
+
+      // Optional: stop mic when leaving the page/tab
+      window.addEventListener('pagehide', stopMic);
+      window.addEventListener('beforeunload', stopMic);
+    })();
+  </script>
+</body>
+</html>
